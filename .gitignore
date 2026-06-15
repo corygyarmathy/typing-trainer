@@ -1,0 +1,43 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Build outputs
+/bin/
+/dist/
+/result
+/result-*
+
+# Generated code (regenerate via `make sqlc` / `make openapi`)
+/internal/db/
+
+# Test / coverage artifacts
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Go workspace file
+go.work
+go.work.sum
+# Editor noise
+.idea/
+.vscode/
+*.swp
+*~
+
+# env file
+.env
+# OS
+.DS_Store
+
+# Nix
+.direnv/
