@@ -1,0 +1,68 @@
+// Command server is the entry point for the typing-trainer backend.
+//
+// Responsibilities:
+//   - Load configuration from environment
+//   - Initialise logging
+//   - Open the database pool and run migrations
+//   - Wire dependencies (repositories -> services -> handlers)
+//   - Start the HTTP server with graceful shutdown
+//
+// All wiring lives here so the rest of the codebase has no global state.
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+func main() {
+	if err := run(); err != nil {
+		slog.Error("server exited with error", "err", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	// TODO(phase-1): load config via internal/platform/config
+	// TODO(phase-1): initialise slog via internal/platform/logging
+	// TODO(phase-2): open pgx pool and run goose migrations
+	// TODO(phase-3): construct adaptive engine
+	// TODO(phase-4): construct repositories, services, handlers; build chi router
+	// TODO(phase-5): wire auth middleware
+	// TODO(phase-6): expose /metrics, /healthz, /readyz
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           http.NotFoundHandler(), // TODO replace with router
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		slog.Info("server listening", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
+	case err := <-errCh:
+		return err
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
+}
