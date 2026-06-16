@@ -1,0 +1,243 @@
+# Adaptive Engine Design
+
+> Design doc for `internal/adaptive`. Covers the competency model, scoring, progression, and lesson generation. This is the spec the package implements and the tests assert against.
+
+## Summary
+
+The engine takes a snapshot of a user's typing competency plus a corpus of language data, and returns the next lesson - a short block of pronounceable, english-like words biased toward the user's current weak points. After a lesson is completed, the engine folds the result back into competency state and decides whether to introduce new content.
+
+It is pure: `state in → state out`, no I/O, all randomness injected. The `progress` and `session` services translate between persisted models and the engine's local types and call into it; the engine never calls out.
+
+## What we borrow from keybr, and what we add
+
+[keybr's model](https://keybr.com/help), distilled: track per-key speed and accuracy; give each key a confidence that grows with sample count; start from a small set of the most frequent letters; introduce a new letter once the current set clears a speed/accuracy threshold; bias generation toward weak keys so mastered keys fade and problem keys recur; let the user set their own target speed as the threshold. Lessons are phonetic pseudo-words, so generation already _uses_ ngram structure (the letter combinations that occur in the language) to avoid nonsense like `zx`.
+
+The gap, and my contribution: keybr uses ngram structure to _generate_ but never _scores or progresses on ngrams as first-class items_. I track, score, and gate on ngrams the same way keybr does for single keys. The same ngram model that drives generation also defines a second competency dimension and a second progression axis. **The ngram model is simultaneously the lesson generator and a scored competency dimension.**
+
+## Core model
+
+### Items
+
+An _item_ is the unit of competency. There are two kinds:
+
+- **Keys** - single runes (`e`, `t`, `;`, ...).
+- **Ngrams** - short character sequences that occur in the language (`th`,
+  `ing`, `he`, ...). v1 uses bigrams and trigrams.
+
+Keys and ngrams are scored with the same machinery. The only differences are how they are unlocked (below) and that an ngram is only ever _active_ if all of its constituent keys are unlocked.
+
+### ItemScore
+
+Each item carries a smoothed competency estimate plus enough metadata to compute confidence and recency-decay:
+
+```go
+type ItemScore struct {
+    Score         float64   // smoothed competency, [0,1]; higher = better
+    Samples       int       // keystrokes observed for this item; confidence
+    LastPracticed time.Time // for recency decay
+}
+```
+
+`Score` is what selection and unlocking read. `Samples` expresses confidence: a high score off three keystrokes is not trustworthy. `LastPracticed` lets us decay an item's _effective_ score at read time so neglected items resurface.
+
+### CompetencyState
+
+```go
+type CompetencyState struct {
+    Keys      map[rune]ItemScore
+    Ngrams    map[string]ItemScore
+    NgramTier int  // how many of the frequency-ranked ngrams are in scope
+    TargetWPM int  // auto-generated; defines the speed threshold (default 40)
+}
+```
+
+Presence of a key in `Keys` means it is unlocked. Same for `Ngrams`. This is the JSONB document persisted per user (see the schema ADR); it maps 1:1 to the engine's working type, which is the point.
+
+### Result (input to ApplyResult)
+
+The client aggregates per-item stats during a lesson and submits a summary -
+we do **not** ship or store raw keystrokes (see ADR on keystroke aggregation).
+
+```go
+type Observation struct {
+    Attempts    int     // times this item was typed in the lesson
+    Errors      int     // of those, how many were wrong
+    TotalMillis float64 // cumulative time across attempts
+}
+
+type Result struct {
+    Keys   map[rune]Observation
+    Ngrams map[string]Observation
+}
+```
+
+### Lesson (output of NextLesson)
+
+```go
+type Lesson struct {
+    Words   []string // 10-15 generated words
+    Targets []string // items this lesson was built to exercise (telemetry)
+}
+```
+
+## Scoring
+
+For a single item's observation in a completed lesson:
+
+```
+accuracy   = (Attempts - Errors) / Attempts                  // [0,1]
+meanKeyMs  = TotalMillis / Attempts
+targetMs   = 60000 / (TargetWPM * 5)                          // ms per char at target
+speed      = clamp(targetMs / meanKeyMs, 0, 1)                // 1.0 == at/above target
+instant    = W_ACCURACY*accuracy + W_SPEED*speed             // [0,1]
+```
+
+`W_ACCURACY = 0.7`, `W_SPEED = 0.3`: accuracy dominates, because for _learning_ you want correctness first and speed second. (The 5-chars-per-word convention is the standard WPM definition.)
+
+The stored score is an exponential moving average of `instant`, which gives keybr's "confidence based on recent performance" behaviour - recent runs matter more, but one bad run doesn't erase history:
+
+```
+Score'   = ALPHA * instant + (1 - ALPHA) * Score   // ALPHA = 0.3
+Samples' = Samples + Attempts
+```
+
+For a brand-new item (`Samples == 0`), `Score' = instant`.
+
+### Recency decay
+
+Items not practiced recently should drift down so the engine revisits them. We do this at **read time** as a pure function of timestamps - no background job, fully deterministic, trivially testable:
+
+```
+age          = now - LastPracticed
+decayedScore = Score * exp(-age / TAU)             // TAU = 7 days
+```
+
+Selection and unlocking use `decayedScore`, never the raw `Score`. The stored history stays honest; decay is a lens applied when reading.
+
+## Progression
+
+Two axes. Keys are the breadth of the alphabet; ngram tier is the depth of combinations practiced. They interact: an ngram is active only once all its letters are unlocked.
+
+### Key unlocking
+
+- Start from `corpus.StartingKeys()` - the N most frequent letters (keybr uses `e n i t r l`); `N` is a constant, default 4.
+- New keys are introduced one at a time, in `corpus.KeyOrder()` (frequency order), when **every** currently-unlocked key clears the bar:
+
+```
+unlock next key  ⟺  for all unlocked k:
+                       decayedScore(k) >= UNLOCK_KEY_THRESHOLD   (0.85)
+                       and Samples(k)  >= MIN_SAMPLES            (50)
+```
+
+The `MIN_SAMPLES` gate prevents a lucky high score off too little data from unlocking prematurely.
+
+### Ngram tiers
+
+Ngrams are ranked once by language frequency in the corpus. `NgramTier` says how many of that ranked list are in scope. An ngram is _active_ iff it is within the current tier **and** all its keys are unlocked.
+
+```
+advance ngram tier  ⟺  for all active ngrams g:
+                          decayedScore(g) >= UNLOCK_NGRAM_THRESHOLD  (0.80)
+                          and Samples(g)  >= MIN_SAMPLES
+```
+
+### Phase A → Phase B
+
+To keep the early game simple and to make the "key-focus → ngram-focus" transition in the test sketch concrete, derive a phase:
+
+```
+PhaseKeys   = not all keys unlocked, OR mean key decayedScore < PHASE_THRESHOLD (0.75)
+PhaseNgrams = otherwise
+```
+
+In `PhaseKeys`, ngram weakness contributes little to generation (`LAMBDA_NGRAM` is held low); the lesson is driven by key weakness while the alphabet fills in. In `PhaseNgrams`, `LAMBDA_NGRAM` ramps up and ngram weakness drives generation. This is a soft transition implemented purely through the generation weights below - there is no hard mode switch, which keeps it testable and avoids a jarring change for the user.
+
+## Lesson generation
+
+Generation is a weighted random walk over the corpus's ngram transition graph, restricted to unlocked keys, with transition weights modulated by weakness. It always produces output even when only a handful of keys are unlocked (the early-game problem that a real-word dictionary filter suffers from), and it produces pronounceable english-like words because the transitions come from real language frequencies.
+
+For each step, given the current context (the previous `n-1` characters):
+
+```
+candidates = corpus.Transitions(context)          // next chars + base frequency,
+                                                   // already restricted to the language
+for each candidate c forming ngram g = context+c:
+    if any key in g is not unlocked: skip
+    w(c) = baseFreq(g)
+         * (1 + LAMBDA_KEY   * need(c))            // boost weak keys
+         * (1 + LAMBDA_NGRAM * need(g))            // boost weak ngrams (phase-scaled)
+sample next char by w(c) using the injected rand
+```
+
+where `need(item) = 1 - decayedScore(item)` for known items, and `need = 1.0` for not-yet-practiced active items (so newly unlocked content surfaces hard, matching keybr's behaviour of front-loading a new letter). Insert word boundaries to hit a target word-length distribution; continue until 10-15 words are produced. Record the high-`need` items in `Lesson.Targets`.
+
+`LAMBDA_KEY ≈ 3`, `LAMBDA_NGRAM ≈ 0.5` in `PhaseKeys` ramping to `≈ 3` in `PhaseNgrams`.
+
+> [!INFO] Generated pseudo-words vs. real-word dictionary
+> Use the generator as the primary source because it never starves with a small alphabet and because it unifies generation with the ngram model. A real-word dictionary filtered to unlocked letters is a possible later addition for late-game variety.
+
+## The two engine functions
+
+```go
+// NextLesson reads current state and produces the next lesson. Pure: all
+// randomness flows through r; decay is computed from now.
+func NextLesson(s CompetencyState, c Corpus, now time.Time, r *rand.Rand) Lesson
+
+// ApplyResult folds a completed lesson's result into competency state and
+// applies any unlocks/tier advances. Pure: now is passed in, no clock read.
+func ApplyResult(s CompetencyState, res Result, now time.Time) CompetencyState
+```
+
+`ApplyResult` order of operations: update each observed item's `Score`, `Samples`, `LastPracticed`; then evaluate the key-unlock condition (unlock at most one key per call); then evaluate the ngram-tier condition. Unlocking after scoring means a lesson's own result can trigger the unlock it earned.
+
+### The Corpus dependency
+
+The engine takes `Corpus` as a parameter so the dependency points downward (`internal/corpus` owns the data; `adaptive` consumes an interface):
+
+```go
+type Corpus interface {
+    StartingKeys() int
+    KeyOrder() []rune                  // frequency order for unlocking
+    NgramsByFrequency() []string       // frequency-ranked; defines tiers
+    Transitions(context string) []Candidate  // for the generator
+}
+```
+
+## Tunable constants
+
+Keep these in one block so they are easy to find, tune, and explain.
+
+| Constant                 | Default | Meaning                                       |
+| ------------------------ | ------- | --------------------------------------------- |
+| `W_ACCURACY`             | 0.7     | weight of accuracy in instant score           |
+| `W_SPEED`                | 0.3     | weight of speed in instant score              |
+| `ALPHA`                  | 0.3     | EMA smoothing; higher = more reactive         |
+| `TAU`                    | 7 days  | recency decay time constant                   |
+| `UNLOCK_KEY_THRESHOLD`   | 0.85    | min decayed score on all keys to unlock next  |
+| `UNLOCK_NGRAM_THRESHOLD` | 0.80    | min decayed score on active ngrams to advance |
+| `MIN_SAMPLES`            | 50      | confidence gate before any unlock             |
+| `PHASE_THRESHOLD`        | 0.75    | mean key score to enter ngram-focus phase     |
+| `STARTING_KEYS`          | 4       | size of the initial unlocked set              |
+| `LAMBDA_KEY`             | 3.0     | weak-key boost in generation                  |
+| `LAMBDA_NGRAM`           | 0.5→3.0 | weak-ngram boost; phase-scaled                |
+| `LESSON_WORDS`           | 10-15   | words per generated lesson                    |
+
+These are guesses, not gospel. Tune them against simulated users (below).
+
+## Testability
+
+Everything above is pure, so the tests in the `engine_test.go` sketch fall out directly:
+
+- **Selection invariants** - generate a lesson, assert every character is an unlocked key; assert weak items (low `decayedScore`) appear at higher frequency than strong items across many seeded runs; assert a newly unlocked item appears in the next lesson's `Targets`.
+- **Scoring invariants** - feed a perfect-but-slow observation and a fast-but-error-laden one; assert the former scores higher (accuracy weight dominates); feed two identical items with different `LastPracticed`; assert the stale one has a lower `decayedScore`.
+- **End-to-end progression** - drive `ApplyResult` in a loop with a simulated user that types at a fixed accuracy/speed; assert all 26 keys unlock within a bounded number of lessons; assert the phase flips from key-focus to ngram-focus once mean key score crosses `PHASE_THRESHOLD`.
+
+Because randomness is injected, seed the `rand.Rand` for deterministic frequency assertions. Property-based tests (`testing/quick`) fit the invariants well: for any valid state, a generated lesson contains only unlocked keys.
+
+The simulated-user harness doubles as a tuning tool: run a few thousand virtual lessons against different constant sets and watch how many lessons it takes a "good" and a "struggling" learner to clear the alphabet. That harness is also a great thing to show an interviewer - it demonstrates you validated the design, not just shipped it.
+
+## Open questions (decide later, note in README/ADR)
+
+- Bigrams only, or bigrams + trigrams? Start with bigrams; add trigrams once the bigram path works end to end.
+- Real-word dictionary as a late-game variety source layered on top of the generator.
+- Key-introduction order: pure frequency vs. a pedagogical order (home row first). Frequency is the keybr-faithful default.
