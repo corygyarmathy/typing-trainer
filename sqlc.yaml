@@ -1,0 +1,24 @@
+# sqlc generates type-safe Go from SQL. Each domain package owns its own
+# queries file under internal/<package>/queries.sql, with generated code
+# emitted into internal/<package>/db/.
+#
+# See https://docs.sqlc.dev/en/stable/reference/config.html
+
+version: "2"
+sql:
+  - engine: postgresql
+    schema: migrations/
+    queries:
+      - internal/auth/queries.sql
+      - internal/progress/queries.sql
+      - internal/session/queries.sql
+      - internal/corpus/queries.sql
+    gen:
+      go:
+        package: db
+        sql_package: pgx/v5
+        out: internal/db
+        emit_interface: true
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_pointers_for_null_types: true
