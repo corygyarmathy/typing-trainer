@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: Typing Trainer API
+  version: 0.1.0
+  description: |
+    Backend API for the adaptive typing trainer. The TUI client consumes
+    this API; there is no browser client.
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+# Phase 4 work: define paths as you build the handlers.
+# Suggested initial surface:
+#
+#   POST   /auth/register
+#   POST   /auth/login
+#   POST   /auth/refresh
+#
+#   GET    /progress              - current competency snapshot
+#   GET    /lessons/next          - generate next lesson
+#   POST   /sessions              - submit a completed session result
+#   GET    /sessions              - list past sessions (paginated)
+#
+# Generate server interfaces with oapi-codegen and implement them in
+# each domain package's handler.go.
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
