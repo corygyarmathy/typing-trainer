@@ -38,7 +38,11 @@ func run() error {
 	// TODO(phase-5): wire auth middleware
 	// TODO(phase-6): expose /metrics, /healthz, /readyz
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
 	defer stop()
 
 	cfg, err := config.Load()
@@ -70,7 +74,10 @@ func run() error {
 		return err
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
 }
