@@ -6,15 +6,35 @@
 // produce structured output.
 package logging
 
-import "log/slog"
+import (
+	"log/slog"
+	"os"
+)
 
-// Setup installs a slog logger as the default based on the level string.
+// Setup installs the process-wide default logger and returns it for DI callers.
 // Valid levels: "debug", "info", "warn", "error".
-//
-// TODO(phase-1):
-//   - Use slog.NewJSONHandler for production, slog.NewTextHandler for dev
-//   - Add a "service" attribute to every log line
-//   - Return the logger so callers that prefer DI can use it
-func Setup(level string) *slog.Logger {
-	return slog.Default()
+func Setup(level, env string) *slog.Logger {
+	var lvl slog.Level
+	switch level {
+	case "debug":
+		lvl = slog.LevelDebug
+	case "warn":
+		lvl = slog.LevelWarn
+	case "error":
+		lvl = slog.LevelError
+	default:
+		lvl = slog.LevelInfo // config already validated; safety net
+	}
+
+	opts := &slog.HandlerOptions{Level: lvl}
+	var h slog.Handler
+	if env == "production" {
+		h = slog.NewJSONHandler(os.Stdout, opts)
+	} else {
+		h = slog.NewTextHandler(os.Stdout, opts)
+	}
+
+	logger := slog.New(h).With("service", "typing-trainer")
+	slog.SetDefault(logger)
+	return logger
 }
