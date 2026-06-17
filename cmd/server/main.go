@@ -54,7 +54,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           http.NotFoundHandler(), // TODO replace with router
+		Handler:           http.NotFoundHandler(), // TODO: replace with router
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
