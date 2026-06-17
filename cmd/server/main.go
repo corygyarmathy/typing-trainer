@@ -19,6 +19,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/corygyarmathy/typing-trainer/internal/platform/config"
 )
 
 func main() {
@@ -29,7 +31,6 @@ func main() {
 }
 
 func run() error {
-	// TODO(phase-1): load config via internal/platform/config
 	// TODO(phase-1): initialise slog via internal/platform/logging
 	// TODO(phase-2): open pgx pool and run goose migrations
 	// TODO(phase-3): construct adaptive engine
@@ -39,6 +40,11 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 
 	srv := &http.Server{
 		Addr:              ":8080",
