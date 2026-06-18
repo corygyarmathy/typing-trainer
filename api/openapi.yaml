@@ -1,17 +1,34 @@
-openapi: 3.1.0
+openapi: "3.0.3"
+# TODO: explore implementation of 3.1 spec w/ overlays, or even different tools.
+#       Consider whether using the older OpenAPI spec matters or not.
+
 info:
   title: Typing Trainer API
-  version: 0.1.0
+  version: "1.0.0"
   description: |
-    Backend API for the adaptive typing trainer. The TUI client consumes
-    this API; there is no browser client.
+    Backend for the adaptive typing trainer. The client requests the next
+    lesson, the user types it, and the client submits per-item observations.
+    The server folds those into the user's competency state (via the adaptive
+    engine) and records a session summary.
+
+    Written to OpenAPI 3.0.3 for clean `oapi-codegen` support. Server
+    interfaces are generated from this file; handlers implement them.
+
+    Tracking 3.1 implementation as per:
+    - https://github.com/oapi-codegen/oapi-codegen/pull/2336
+    - https://github.com/oapi-codegen/oapi-codegen/issues/373
+
+    Note: the internal sshd-only token-exchange endpoint (ADR 0007) is
+    deliberately omitted. It is not part of the public contract.
 
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:8080
     description: Local development
+  - url: https://typist.gyarmathy.co
+    description: Homelab deployment
 
-# Phase 4 work: define paths as you build the handlers.
-# Suggested initial surface:
+# Phase 4 work: define paths as the handlers are built.
+# Potential initial surface:
 #
 #   POST   /auth/register
 #   POST   /auth/login
