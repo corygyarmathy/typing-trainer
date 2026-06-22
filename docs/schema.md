@@ -1,7 +1,5 @@
 # Database Schema
 
-<!-- TODO: add links to ADRs -->
-
 > Reflects the decisions in [ADR 0005 (sqlc + goose)](/docs/adr/0005-sqlc-and-goose.md), [ADR 0010 (unified identity + JWT)](/docs/adr/0010-unified-identity-and-jwt.md) , and the [adaptive-engine design doc](/docs/adaptive-engine.md) (competency persisted as a JSONB document that maps 1:1 to the engine's `CompetencyState`).
 
 ## Overview
@@ -82,7 +80,7 @@ The `competency` document shape (this is exactly the engine's `CompetencyState`)
 
 **`auth_credentials`.** The unique constraint `(kind, identifier)` is both the integrity rule and the lookup index - login and SSH-key resolution both query by it. Emails are normalised to lowercase in the application before insert and lookup (simpler than a `citext` column when the column is polymorphic across credential kinds). `secret` is null for `ssh_key` rows.
 
-**`sessions`.** Stores the per-attempt summary the client reports. The per-item `Observation` data is folded into `user_progress.competency` by the engine and then discarded; if replay or audit is ever wanted, add a nullable `jsonb` column for the raw observations rather than a child table. `lesson_text` is optional and exists only to power a "what did I type" history view. Index `(user_id, completed_at DESC)` for history and progress-chart queries.
+**`sessions`.** Stores the per-attempt summary the client reports. The per-item `Observation` data is folded into `user_progress.competency` by the engine and then discarded; if replay or audit is ever wanted, add a nullable `jsonb` column for the raw observations rather than a child table. `lesson_text` is optional and exists only to power a "what did I type" history view. Index `(user_id, completed_at DESC)` `(user_id, completed_at DESC)` for history and progress-chart queries. History is paginated with a **keyset (seek) cursor**, not `OFFSET`: the opaque `cursor` in the API encodes the last row's `(completed_at, id)`, and the next page is `WHERE (completed_at, id) < (:completed_at, :id) ORDER BY completed_at DESC, id DESC LIMIT :n`. This rides the index above, stays correct when new sessions are inserted between page fetches, and does not degrade as the offset grows.
 
 **`user_progress`.** One row per user, created atomically with the user at registration (a single transaction, which the modular monolith makes trivial - see [ADR 0003](/docs/adr/0003-modular-monolith.md). PK on `user_id` is the only access path needed.
 

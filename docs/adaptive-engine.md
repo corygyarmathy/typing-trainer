@@ -55,8 +55,7 @@ Presence of a key in `Keys` means it is unlocked. Same for `Ngrams`. This is the
 
 ### Result (input to ApplyResult)
 
-The client aggregates per-item stats during a lesson and submits a summary -
-we do **not** ship or store raw keystrokes (see ADR on keystroke aggregation).
+The client aggregates per-item stats during a lesson and submits a summary - we do **not** ship or store raw keystrokes (see [Client observation model](#client-observation-model) below, and the [schema doc](schema.md)).
 
 ```go
 type Observation struct {
@@ -79,6 +78,21 @@ type Lesson struct {
     Targets []string // items this lesson was built to exercise (telemetry)
 }
 ```
+
+## Client observation model
+
+The engine consumes `Observation`s but never produces them: the client measures them while the user types, then submits the per-key and per-ngram summaries. (On the identified path these go to `POST /sessions`; on the offline path they feed straight into `ApplyResult` in-process - see [ADR 0014](adr/0014-engine-as-library-state-follows-identity.md).)
+To make that measurement unambiguous, v1 fixes both the input model and the attribution rules here, so every client attributes identically.
+
+**Force-correction input.** The cursor advances only when the correct key is pressed; a wrong key is rejected and counts as an error at that position. This matches keybr, aligns with the accuracy-first scoring weights, and - crucially - removes the ambiguity that free typing (backspaces, skipped errors, drift between typed and intended text) would otherwise inject into attribution. The typed text and the intended text stay aligned by construction.
+
+**Attribution.** For a lesson whose intended text is a known character sequence:
+
+- _Key_ `k` at position `i`: `Attempts += 1`; `Errors += 1` if the **first** keystroke at `i` was wrong (regardless of how many wrong keys followed before the correct one); `TotalMillis +=` the interval between the correct keystroke at `i-1` and the correct keystroke at `i`.
+- _Ngram_ `g`, for each length-`n` window of the intended text whose characters are all active items: `Attempts += 1`; `Errors += 1` if any character in the window had a first-try error; `TotalMillis +=` the summed per-character intervals across the window.
+- Word-boundary spaces are not scored as keys in v1, and ngrams do not span them.
+
+Because nothing keystroke-level is transmitted or stored - only the aggregated `Observation`s - this is consistent with the no-raw-keystroke decision in the [schema doc](schema.md). Keeping the rules here rather than in the client means the standalone TUI, the SSH TUI, and any future client (e.g. a web client re-implementing them) are held to one spec.
 
 ## Scoring
 
@@ -238,6 +252,6 @@ The simulated-user harness doubles as a tuning tool: run a few thousand virtual 
 
 ## Open questions (decide later, note in README/ADR)
 
-- Bigrams only, or bigrams + trigrams? Start with bigrams; add trigrams once the bigram path works end to end.
-- Real-word dictionary as a late-game variety source layered on top of the generator.
+- Bigrams only, or bigrams + trigrams? Start with bigrams; add trigrams once the bigram path works end to end. The generator emits both; the engine chooses.
+- Real-word dictionary as a late-game variety source layered on top of the generator ([ADR 0013](adr/0013-corpus-as-embedded-generated-data.md) keeps this out of v1).
 - Key-introduction order: pure frequency vs. a pedagogical order (home row first). Frequency is the keybr-faithful default.

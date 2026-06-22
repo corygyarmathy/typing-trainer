@@ -27,16 +27,20 @@ Three executables sharing the domain code:
 
 ## Bounded contexts
 
-The server is structured as a modular monolith. Four bounded contexts, each owning its own types, business logic, and persistence:
+The server is structured as a modular monolith. Four bounded contexts. Three own persistence; `corpus` is read-only reference data embedded in the binary, not a database-backed context ([ADR 0013](adr/0013-corpus-as-embedded-generated-data.md)):
 
-| Context    | Responsibility                                         |
-| ---------- | ------------------------------------------------------ |
-| `auth`     | Registration, login, JWT issue and validation          |
-| `corpus`   | Ngram lists, word generators, lesson source data       |
-| `progress` | Per-user per-key and per-ngram competency state        |
-| `session`  | Records of completed typing sessions and their results |
+| Context    | Responsibility                                                            |
+| ---------- | ------------------------------------------------------------------------- |
+| `auth`     | Registration, login, JWT issue and validation                             |
+| `corpus`   | Embedded ngram frequencies and the transition graph that drive generation |
+| `progress` | Per-user per-key and per-ngram competency state                           |
+| `session`  | Records of completed typing sessions and their results                    |
 
 The `adaptive` package sits above these contexts, consuming `corpus` and `progress` to produce lessons. It contains the interesting domain logic and is deliberately I/O-free.
+
+## Where the engine runs
+
+`adaptive` is a pure library, so it runs in two places ([ADR 0014](adr/0014-engine-as-library-state-follows-identity.md)). For identified users (password or SSH key) it runs inside the server, behind the API, with state in Postgres. For anonymous or offline users it runs in-process in the client, against ephemeral or local-file state, never touching the database. The identified path is what the SSH demo exercises end to end; the anonymous path keeps the tool usable with no sign-in wall and without writing rows.
 
 ## Layering inside a context
 
@@ -64,7 +68,23 @@ A typical authenticated request (`GET /api/v1/lessons/next`) flows through:
 6. The service calls `adaptive.Engine.NextLesson(state, corpus)` - pure
 7. The service returns the result up through the handler, which JSON-encodes it
 
+## Write flow
+
+`POST /api/v1/sessions` is the one request that writes across bounded contexts: it records a session _and_ folds the result into competency. The `session` service owns this unit of work, composing the `progress` repository and the pure engine inside a single transaction:
+
+1. begin a transaction
+2. load the user's `CompetencyState` via the `progress` repository (transaction-scoped)
+3. `adaptive.ApplyResult(state, result, now)` - pure; folds the observations in and applies any unlock or tier advance
+4. derive the session's WPM and accuracy from the submitted duration and observations - pure; the server does not trust client-computed aggregates
+5. insert the `sessions` row via the `session` repository (same transaction)
+6. write the updated competency via the `progress` repository (same transaction)
+7. commit
+
+The two repositories share one transaction via sqlc's `WithTx`: each is constructed against the same `pgx.Tx`, so the coordinator composes _repositories_, not services, and `session` never depends on the `progress` service. This is where the modular monolith earns its keep - a cross-domain write is one local transaction, with no saga and no eventual-consistency dance ([ADR 0003](adr/0003-modular-monolith.md)).
+
 ## What's not in v1
+
+These are deliberate non-goals, not omissions; each the possibility of being revisited.
 
 - Microservices (modular monolith is the right size)
 - Message queues (no async work yet)
@@ -72,3 +92,5 @@ A typical authenticated request (`GET /api/v1/lessons/next`) flows through:
 - Kubernetes (Docker on a single homelab host is fine)
 - GraphQL (REST is the right fit for a TUI consumer)
 - OAuth (JWT registration is enough for v1)
+- Password reset / email verification (no email infrastructure in v1; revisit when there are real users to lock out of accounts)
+- Rate limiting on `/auth/*` (deferred until the public SSH surface ships; the SSH layer has its own per-IP limits in [ADR 0008](adr/0008-ssh-public-key-authentication.md))
