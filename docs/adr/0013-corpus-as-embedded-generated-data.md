@@ -1,6 +1,6 @@
 # ADR 0013: Corpus as embedded, generated statistical data
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-22
 - **Related Artefacts**:
   - [Adaptive-Engine Design Doc](/docs/adaptive-engine.md)
