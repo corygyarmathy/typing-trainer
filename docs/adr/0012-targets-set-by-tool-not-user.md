@@ -1,7 +1,7 @@
 # ADR 0012: Targets set by tool, not by user
 
-**Status:** Proposed
-**Date:** 2026-06-18
+- **Status:** Proposed
+- **Date:** 2026-06-18
 
 ## Context
 

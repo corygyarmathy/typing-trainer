@@ -1,7 +1,7 @@
 # ADR 0005: sqlc for queries, goose for migrations
 
-**Status:** Proposed
-**Date:** 2026-06-15
+- **Status:** Proposed
+- **Date:** 2026-06-15
 
 ## Context
 
@@ -20,15 +20,16 @@ Go has several options for database access (raw `database/sql`, `pgx` directly, 
 - Queries are written in SQL - the language the database actually speaks. No leaky ORM abstraction, no learning a query DSL, no surprises about what SQL hits the database.
 - `sqlc` generates Go types that match the SQL exactly, caught at compile time.
 - `goose` migrations are plain SQL with a tiny annotation header. Familiar for anyone who's done schema migrations before.
-- Advisory locking prevents race conditions when multiple instances boot against the same database (not relevant now, good hygiene later).
+- Advisory locking prevents race conditions when multiple instances boot against the same database.
+- Already familiar with these tools and SQL, don't need to learn something new and confident they will be sufficient for the use case.
 
 **Negative**
 
-- `sqlc` can't generate everything - dynamic queries (variable `WHERE` clauses) need to be hand-written. We will use `pgx` directly for those.
+- `sqlc` can't generate everything - dynamic queries (variable `WHERE` clauses) need to be hand-written. Use `pgx` directly for those.
 - Two generated-code artifacts to keep in sync (`sqlc` and `oapi-codegen`).
 
 ## Alternatives considered
 
-- **`GORM` / `ent`.** Rejected. `GORM` is not idiomatic and reviewers may interpret it as a sign of not having outgrown the tutorial phase. `ent` is more defensible but the schema-as-Go-code approach is heavyweight for what we need.
+- **`GORM` / `ent`.** Rejected. `GORM` is not idiomatic and reviewers may interpret it as a sign of not having outgrown the tutorial phase. `ent` is more defensible but the schema-as-Go-code approach is heavyweight for what's needed.
 - **squirrel query builder.** Reasonable choice; rejected because `sqlc` gives stronger compile-time guarantees and is the current idiomatic default in modern Go backend projects.
-- **`golang-migrate` over `goose`.** Both are fine. `goose` chosen for familiarity to the author.
+- **`golang-migrate` over `goose`.** Both are fine. `goose` chosen for familiarity.

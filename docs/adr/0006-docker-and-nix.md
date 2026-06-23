@@ -1,7 +1,9 @@
 # ADR 0006: Docker as front door, Nix for reproducibility
 
-**Status:** Proposed
-**Date:** 2026-06-15
+- **Status:** Proposed
+- **Date:** 2026-06-15
+- **Related Artefacts:**
+  - Supplemented by: [`ADR 0011`](/docs/adr/0011-configuration-and-secrets-management.md)
 
 ## Context
 
@@ -15,7 +17,7 @@ The configuration and secrets management aspects of this are addressed in: [`ADR
 
 Both, in parallel, with Docker as the documented quickstart:
 
-- **Docker** (`docker compose up`) is the path advertised in the README. Universal, zero-friction, every reviewer has it installed.
+- **Docker** (`docker compose up`) is the path advertised in the README. Universal, zero-friction, very commonly already installed.
 - **Nix** (`nix develop`, eventually `nix build`) provides the reproducible dev shell, deterministic builds, and the NixOS module used to deploy to the homelab.
 
 The final Docker image and the binary produced by `nix build` should be functionally equivalent - same compiled Go binary, just packaged differently. A stretch goal is to have Nix build the Docker image itself via `dockerTools.buildImage`, giving truly reproducible image hashes.

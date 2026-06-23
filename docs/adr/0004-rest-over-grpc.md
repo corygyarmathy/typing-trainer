@@ -1,13 +1,15 @@
 # ADR 0004: REST + OpenAPI over gRPC
 
-**Status:** Proposed
-**Date:** 2026-06-15
+- **Status:** Proposed
+- **Date:** 2026-06-15
 
 ## Context
 
 The TUI client is the only consumer. Both REST/JSON and gRPC are credible choices in Go, with mature tooling for each.
 
 ## Decision
+
+<!-- TODO: `oapi-codegen` is rolling out support for 3.1 - check the status  -->
 
 REST with an OpenAPI 3.0 (not 3.1 as not yet supported by `oapi-codegen`) spec as the source of truth. Server interfaces are generated from the spec with `oapi-codegen`; handlers implement the generated interfaces.
 

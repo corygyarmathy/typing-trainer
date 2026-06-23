@@ -1,7 +1,7 @@
 # ADR 0003: Modular monolith over microservices
 
-**Status:** Accepted
-**Date:** 2026-06-15
+- **Status:** Accepted
+- **Date:** 2026-06-15
 
 ## Context
 

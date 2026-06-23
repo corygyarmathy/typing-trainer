@@ -1,7 +1,9 @@
 # ADR 0007: SSH as a Demo Surface
 
-**Status:** Proposed
-**Date:** 2026-06-16
+- **Status:** Proposed
+- **Date:** 2026-06-16
+- **Related Artefacts:**
+  - Supplemented by: [`ADR 0008: SSH Public Key Authentication`](/docs/adr/0008-ssh-public-key-authentication.md)
 
 ## Context
 
@@ -9,7 +11,7 @@ The purpose of this project is to be a portfolio project, and thus a live demo i
 
 ## Decision
 
-SSH'ing into the TUI client means that the reviewer can use the tool within seconds - no installs or configurations required. The TUI client will rely on [Bubble Tea](https://github.com/charmbracelet/bubbletea), and the SSH-accessible client will use the [Wish](https://github.com/charmbracelet/wish) library, which is purpose-built for serving Bubble Tea apps over SSH.
+A live demo will be facilitated through SSH'ing into a TUI client hosted on my homelab. The reviewer can use the tool within seconds - no installs or configurations required. The TUI client will rely on [Bubble Tea](https://github.com/charmbracelet/bubbletea), and the SSH-accessible client will use the [Wish](https://github.com/charmbracelet/wish) library, which is purpose-built for serving Bubble Tea apps over SSH.
 
 The specifics of authentication are addressed in [`ADR 0008: SSH Public Key Authentication`](/docs/adr/0008-ssh-public-key-authentication.md).
 

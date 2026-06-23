@@ -1,7 +1,7 @@
 # ADR 0002: Golang Selection
 
-**Status:** Accepted
-**Date:** 2026-06-15
+- **Status:** Accepted
+- **Date:** 2026-06-15
 
 ## Context
 
@@ -21,10 +21,10 @@ I have decided to write the project in Go. This is for the following reasons:
 
 ## Consequences
 
-- Obviously, the major effect is that all the code will be written in Go.
+- The major effect is that all the code will be written in Go.
 - Impacts all chosen tools, as I will be choosing ones that work well with Go.
 
 ## Alternatives considered
 
 - **Java/C#.** Rejected: Different languages, but rejected for the same reasons. The major reasons for considering these languages is that they are prevalent in the Perth job market, where Go isn't as much. While I have familiarity with these languages, it is not currently at the same level as Go or Python. To learn a language and toolset on top of completing this project would delay it too much.
-- **Python.** Rejected: The major reason for considering this is both my familiarity with the tool and its prevalence in the Australian job market. The main reasons for rejecting it are: I'm more familiar with and confident in the Go tools required for this project, and I've found that - due to its flexibility - Python requires the developer to enforce structure rather than the language doing so, which creates issues as the complexity increases.
+- **Python.** Rejected: The major reason for considering this is both my familiarity with the tool and its prevalence in the Australian job market. The main reasons for rejecting it are: I'm more familiar with and confident in the Go tools required for this project, and I've found that - due to its flexibility - Python requires the developer to enforce structure rather than the language doing so, which creates issues as the project complexity increases.

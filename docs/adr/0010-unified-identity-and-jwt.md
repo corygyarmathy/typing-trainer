@@ -1,13 +1,18 @@
 # ADR 0010: Unified identity with multiple auth methods, JWT as the single API credential
 
-**Status:** Accepted
-**Date:** 2026-06-16
+- **Status:** Proposed
+- **Date:** 2026-06-16
+- **Related Artefacts**:
+  - Supplemented by:
+    - [ADR 0014](/docs/adr/0014-engine-as-library-state-follows-identity.md)
+    - [ADR 0015](/docs/adr/0015-access-and-refresh-tokens.md)
+  - See also: [ADR 0016](/docs/adr/0016-asymmetric-jwt-signing.md)
 
 ## Context
 
 The system has two ways a user arrives: the HTTP API, where they register and log in with email and password, and the SSH-hosted TUI, where they are identified by their SSH public key ([ADR 0008](/docs/adr/0008-ssh-public-key-authentication.md), with an anonymous fallback when no key is offered.
 
-Left unreconciled, that is two identity systems. The draft `users` table carried `email` and `password_hash` directly, which cannot represent an SSH-key user (no email, no password) or an anonymous user (neither). I need a single identity model that both entry points map onto, and I need to decide how the SSH layer authenticates to the API once it has identified the user.
+Left unreconciled, that is two identity systems. I need a single identity model that both entry points map onto, and I need to decide how the SSH layer authenticates to the API once it has identified the user.
 
 ## Decision
 
@@ -23,9 +28,13 @@ A password registration creates a user plus a `password` credential. An incoming
 **JWT is the single API credential, acquired two ways.** Everything that talks to the API authenticates with a short-lived JWT access token. There are two ways to obtain one:
 
 1. The public `POST /api/v1/auth/login` endpoint, for password users.
-2. An internal, sshd-only token-exchange endpoint that mints a JWT for an SSH-resolved user. This endpoint is not publicly routable and is reachable only from the SSH host.
+2. An internal, sshd-only token-exchange endpoint that mints a JWT for an SSH-resolved user. Full detail in [ADR 0016](/docs/adr/0016-asymmetric-jwt-signing.md).
 
 The SSH layer authenticates the user via the SSH protocol (pubkey), exchanges that identity for a JWT, and from then on the TUI-over-SSH calls the API over HTTP exactly like the standalone TUI does. One client codebase, one API auth model, two transports.
+
+**Token lifetime and renewal.** Access tokens are short-lived (15 minutes). Password-authenticated clients receive a companion refresh token (30 days, rotating) and silently renew on a `401`. The SSH path does not use refresh tokens: sshd holds the user's identity for the life of the connection and re-mints a fresh access token as needed. Full policy in [ADR 0015](/docs/adr/0015-access-and-refresh-tokens.md).
+
+**Anonymous sessions never call the API.** Anonymous users run the engine in-process against ephemeral or local state and make no HTTP calls. Only identified users (password or SSH-key) route through the API. Full detail in [ADR 0014](/docs/adr/0014-engine-as-library-state-follows-identity.md).
 
 ## Consequences
 
@@ -38,7 +47,7 @@ The SSH layer authenticates the user via the SSH protocol (pubkey), exchanges th
 
 **Negative**
 
-- More moving parts than putting `email`/`password_hash` directly on `users`. Mitigated by the join being trivial and the extension story being worth it.
+- More moving parts than putting `email`/`password_hash` directly on `users`. Mitigated by the join being trivial and the extension being worth it.
 - The internal token-exchange endpoint is a trusted path that must be kept off the public network. A misconfiguration that exposed it would let anyone mint a token for any SSH user. Mitigated by binding it to localhost / an internal interface and treating it as a documented security boundary.
 - Two token-acquisition paths to test instead of one.
 
