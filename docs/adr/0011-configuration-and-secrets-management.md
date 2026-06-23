@@ -1,6 +1,6 @@
 # ADR 0011: Configuration and secrets management
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-17
 - **Related Artefacts:**
   - References: [ADR 007](/docs/adr/0007-ssh-as-a-demo-surface.md)

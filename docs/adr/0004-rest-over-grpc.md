@@ -1,6 +1,6 @@
 # ADR 0004: REST + OpenAPI over gRPC
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-15
 
 ## Context

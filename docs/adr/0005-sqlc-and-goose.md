@@ -1,6 +1,6 @@
 # ADR 0005: sqlc for queries, goose for migrations
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-15
 
 ## Context

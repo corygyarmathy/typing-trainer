@@ -1,6 +1,6 @@
 # ADR 0010: Unified identity with multiple auth methods, JWT as the single API credential
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-16
 - **Related Artefacts**:
   - Supplemented by:

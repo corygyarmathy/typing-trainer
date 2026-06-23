@@ -1,6 +1,6 @@
 # ADR 0006: Docker as front door, Nix for reproducibility
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-15
 - **Related Artefacts:**
   - Supplemented by: [`ADR 0011`](/docs/adr/0011-configuration-and-secrets-management.md)

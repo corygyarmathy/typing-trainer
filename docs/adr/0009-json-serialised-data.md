@@ -1,6 +1,6 @@
 # ADR 0009: JSON serialised data
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-16
 - **Related Artefacts**:
   - [`ADR 0002: Golang Selection`](/docs/adr/0002-golang-selection.md).
