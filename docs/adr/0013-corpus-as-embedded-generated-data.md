@@ -17,11 +17,11 @@ A second point is worth settling explicitly because it removes a worry about fea
 
 The corpus is **static reference data, derived from a source corpus by a committed generator and embedded in the binary** - not a persisted bounded context.
 
-- **Source.** A single, license-clean weighted English word-frequency list. Everything the engine needs is derived from it: letter frequencies (`KeyOrder`, `StartingKeys`), bigram and trigram frequencies (`NgramsByFrequency`), and the context -> next-character transition graph (`Transitions`), computed by walking the weighted words with explicit word-boundary markers.
+- **Source.** A small, committed set of public-domain English prose - Project Gutenberg texts whose copyright has expired. Everything the engine needs is derived from it: letter frequencies (`KeyOrder`, `StartingKeys`), bigram and trigram frequencies (`NgramsByFrequency`), and the context -> next-character transition graph (`Transitions`), computed by walking the text token-by-token with explicit word-boundary markers.
 - **Generation.** A small committed tool (`cmd/corpusgen`, or `internal/corpus/gen`) reads the source list and emits a generated artifact. The source list, the generator, and the generated artifact are all committed; `make corpus` regenerates. That triple is the provenance record.
 - **Storage.** The generated artifact is embedded with `go:embed` (a JSON file for inspectability, or a generated `.go`). `internal/corpus` exposes the `Corpus` interface over the embedded data and owns no database code; the scaffolded `handler.go` / `repository.go` are dropped when the package is implemented.
-- The chosen dataset and its license are recorded here once selected.
-  <!-- TODO: name the source dataset and its license. -->
+- **Dataset and licence.** Public-domain English works from [Project Gutenberg](https://www.gutenberg.org). Only the public-domain text is consumed: the generator strips Project Gutenberg's header/footer boilerplate and trademark references - the part their licence actually governs - leaving content that is itself out of copyright, so the embedded corpus carries no attribution or redistribution obligation. The specific titles are listed alongside the generator in `internal/corpus`'s source directory.
+- **Validation.** The generator's output is checked against a published reference ([Norvig's Mayzner letter/ngram analysis](https://norvig.com/mayzner.html)) within a tolerance, so the derived frequencies are demonstrably representative of English rather than an artefact of the chosen titles. This also bounds the scope: a handful of texts plus a tolerance test, not a corpus-engineering exercise.
 
 ## Consequences
 
