@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-06-22
-- **Related Arefacts**:
+- **Related Artefacts**:
   - [Adaptive-Engine Design Doc](/docs/adaptive-engine.md)
   - [ADR 0014](/docs/adr/0014-engine-as-library-state-follows-identity.md)
   - [`Schema.md`](/docs/schema.md)

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Four tables. Identity is decoupled from credentials; competency is one JSONB document per user; sessions are a normal relational table because they are queried (history, WPM-over-time). There is **no** raw-keystroke table - the client aggregates per-item stats and submits a summary, so the keystroke volume never reaches the database. Anonymous SSH sessions are never persisted ([ADR 0008](/docs/adr/0008-ssh-public-key-authentication.md), so they appear nowhere below.
+Four tables. Identity is decoupled from credentials; competency is one JSONB document per user; sessions are a normal relational table because they are queried (history, WPM-over-time). There is **no** raw-keystroke table - the client aggregates per-item stats and submits a summary, so the keystroke volume never reaches the database. Anonymous SSH sessions are never persisted ([ADR 0008](/docs/adr/0008-ssh-public-key-authentication.md)), so they appear nowhere below.
 
 ```mermaid
 erDiagram
@@ -74,15 +74,19 @@ The `competency` document shape (this is exactly the engine's `CompetencyState`)
 }
 ```
 
-`target_wpm` lives in the document because the engine reads it as part of `CompetencyState`. If a settings screen later needs to query or update it independently, promote it to a column on `user_progress`.
+`target_wpm` lives in the document because the engine reads it as part of `CompetencyState`. It is tool-managed, not user-set: the engine starts it at 40 and raises it as the user improves ([ADR 0012](/docs/adr/0012-targets-set-by-tool-not-user.md)). If a settings screen later needs to query or update it independently, promote it to a column on `user_progress`.
 
 ## Notes on the relational tables
 
 **`auth_credentials`.** The unique constraint `(kind, identifier)` is both the integrity rule and the lookup index - login and SSH-key resolution both query by it. Emails are normalised to lowercase in the application before insert and lookup (simpler than a `citext` column when the column is polymorphic across credential kinds). `secret` is null for `ssh_key` rows.
 
-**`sessions`.** Stores the per-attempt summary the client reports. The per-item `Observation` data is folded into `user_progress.competency` by the engine and then discarded; if replay or audit is ever wanted, add a nullable `jsonb` column for the raw observations rather than a child table. `lesson_text` is optional and exists only to power a "what did I type" history view. Index `(user_id, completed_at DESC)` `(user_id, completed_at DESC)` for history and progress-chart queries. History is paginated with a **keyset (seek) cursor**, not `OFFSET`: the opaque `cursor` in the API encodes the last row's `(completed_at, id)`, and the next page is `WHERE (completed_at, id) < (:completed_at, :id) ORDER BY completed_at DESC, id DESC LIMIT :n`. This rides the index above, stays correct when new sessions are inserted between page fetches, and does not degrade as the offset grows.
+**`sessions`.** Stores the per-attempt summary the client reports. The per-item `Observation` data is folded into `user_progress.competency` by the engine and then discarded; if replay or audit is ever wanted, add a nullable `jsonb` column for the raw observations rather than a child table. `lesson_text` is optional and exists only to power a "what did I type" history view. Index `(user_id, completed_at DESC)` for history and progress-chart queries. History is paginated with a **keyset (seek) cursor**, not `OFFSET`: the opaque `cursor` in the API encodes the last row's `(completed_at, id)`, and the next page is `WHERE (completed_at, id) < (:completed_at, :id) ORDER BY completed_at DESC, id DESC LIMIT :n`. This rides the index above, stays correct when new sessions are inserted between page fetches, and does not degrade as the offset grows.
 
-**`user_progress`.** One row per user, created atomically with the user at registration (a single transaction, which the modular monolith makes trivial - see [ADR 0003](/docs/adr/0003-modular-monolith.md). PK on `user_id` is the only access path needed.
+**`user_progress`.** One row per user, created atomically with the user at registration (a single transaction, which the modular monolith makes trivial - see [ADR 0003](/docs/adr/0003-modular-monolith.md)). PK on `user_id` is the only access path needed. The session-submit transaction loads this row `SELECT ... FOR UPDATE`: competency is a whole-document load-modify-write, so two concurrent submissions for the same user would otherwise be a lost-update hazard. The row lock serialises them; contention is per-user, so it is effectively never contended (cheaper than an optimistic version column plus client retry for this access pattern).
+
+## Deferred tables
+
+- **`refresh_tokens`** — introduced by [ADR 0015](/docs/adr/0015-access-and-refresh-tokens.md) (rotating refresh tokens: hashed token, user, expiry, rotation lineage). **Out of scope for the v1 vertical slice**, which authenticates with a single short-lived access token only; the table and the `/auth/refresh` flow land when refresh ships. Listed here so this doc tracks the full intended design rather than going stale against ADR 0015.
 
 ## Conventions
 

@@ -34,23 +34,25 @@ package adaptive
 // point in time. It contains per-key and per-ngram score state, plus the
 // set of unlocked items.
 //
-// TODO(phase-3): fields TBD. Consider:
-//   - UnlockedKeys map[rune]Score
-//   - UnlockedNgrams map[string]Score
-//   - GlobalAccuracy, GlobalWPM
-//   - NgramTier int (current top-N ngrams being practiced)
+// TODO(phase-3): implement per docs/adaptive-engine.md. Fields:
+//   - Keys      map[rune]ItemScore
+//   - Ngrams    map[string]ItemScore
+//   - NgramTier int
+//   - TargetWPM int  // tool-managed speed threshold; see ADR 0012
 type CompetencyState struct{}
 
 // Lesson is a generated practice prompt: 10-15 english-like words built
 // from the currently-unlocked keys and ngrams, weighted toward weak areas.
 type Lesson struct{}
 
-// Engine is the pure-function entry point.
+// The engine's two entry points are package-level pure functions (not methods
+// on a struct): all randomness and the current time are injected so tests are
+// deterministic. See docs/adaptive-engine.md for the full spec.
 //
 // TODO(phase-3):
-//   - NextLesson(state CompetencyState, corpus Corpus) Lesson
-//   - ApplyResult(state CompetencyState, result Result) CompetencyState
+//   - NextLesson(s CompetencyState, c Corpus, now time.Time, r *rand.Rand) Lesson
+//   - ApplyResult(s CompetencyState, res Result, now time.Time) CompetencyState
 //
-// Corpus is provided by internal/corpus (the data) but engine takes it as
-// a parameter to keep the dependency pointed downward.
-type Engine struct{}
+// Corpus is the interface consumed here and implemented by internal/corpus
+// (which owns the data); the engine takes it as a parameter so the dependency
+// points downward — adaptive never imports corpus.

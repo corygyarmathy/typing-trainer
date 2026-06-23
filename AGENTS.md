@@ -29,7 +29,7 @@ division of labour is deliberate and non-negotiable:
 
 ## Commands
 
-Use `nix develop` for a reproducible shell with all tools, or ensure Go 1.23+, `goose`, `sqlc`, `oapi-codegen`, and `golangci-lint` are on `$PATH`.
+Use `nix develop` for a reproducible shell with all tools, or ensure Go 1.26+, `goose`, `sqlc`, `oapi-codegen`, and `golangci-lint` are on `$PATH`.
 
 ```bash
 make run           # run the server (go run ./cmd/server)
@@ -84,7 +84,7 @@ Cross-cutting infrastructure used by all contexts: config loading, database pool
 
 ### Code generation
 
-- **sqlc**: Each context owns a `queries.sql` file. Generated code lands in `internal/db/`. Run `make sqlc` after editing any `.sql` query file.
+- **sqlc**: Each context owns a `queries.sql` file and gets its own generated package under `internal/<context>/db/` (per-context, not one shared `internal/db` — a context cannot reach into another's persistence). Run `make sqlc` after editing any `.sql` query file.
 - **oapi-codegen**: `api/openapi.yaml` is the source of truth for the API contract. Server interfaces are generated from it; handlers implement them. Run `make openapi` after editing the spec.
 
 ### Configuration

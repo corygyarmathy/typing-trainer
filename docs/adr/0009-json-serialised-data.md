@@ -2,7 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-06-16
-- **Related Arefacts**:
+- **Related Artefacts**:
   - [`ADR 0002: Golang Selection`](/docs/adr/0002-golang-selection.md).
   - [`ADR 0004: REST + OpenAPI over gRPC`](/docs/adr/0004-rest-over-grpc.md).
 

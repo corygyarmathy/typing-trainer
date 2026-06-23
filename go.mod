@@ -1,6 +1,6 @@
 module github.com/corygyarmathy/typing-trainer
 
-go 1.23.6
+go 1.26.3
 
 // Dependencies will be added as each phase is implemented
 // Expected core set after phase 4:

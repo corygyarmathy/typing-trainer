@@ -47,7 +47,7 @@ type CompetencyState struct {
     Keys      map[rune]ItemScore
     Ngrams    map[string]ItemScore
     NgramTier int  // how many of the frequency-ranked ngrams are in scope
-    TargetWPM int  // auto-generated; defines the speed threshold (default 40)
+    TargetWPM int  // tool-managed; starts at STARTING_TARGET_WPM (40), raised as the user improves (ADR 0012)
 }
 ```
 
@@ -155,6 +155,20 @@ advance ngram tier  ⟺  for all active ngrams g:
                           and Samples(g)  >= MIN_SAMPLES
 ```
 
+### Target-WPM progression
+
+`TargetWPM` is the speed bar every item is scored against (`targetMs` in [Scoring](#scoring)). The tool owns it ([ADR 0012](adr/0012-targets-set-by-tool-not-user.md)); the user never sets it.
+
+- A new user starts at `STARTING_TARGET_WPM` (40), held fixed while the alphabet fills in.
+- Once **all** keys are unlocked **and** the mean key `decayedScore` clears `TARGET_RAISE_SCORE` (0.85), raise the target by `TARGET_WPM_STEP` (5):
+
+```
+raise target  ⟺  all keys unlocked
+                  and mean over unlocked k of decayedScore(k) >= TARGET_RAISE_SCORE
+```
+
+Because `instant` is accuracy-weighted, clearing the gate implies accurate, at-speed typing, so the raise is mostly accuracy-driven with speed contributing. At most one raise per `ApplyResult`. There is no hard cap: the target rises only while the user keeps clearing it and holds when they stop - a constant small challenge.
+
 ### Phase A → Phase B
 
 To keep the early game simple and to make the "key-focus → ngram-focus" transition in the test sketch concrete, derive a phase:
@@ -202,7 +216,7 @@ func NextLesson(s CompetencyState, c Corpus, now time.Time, r *rand.Rand) Lesson
 func ApplyResult(s CompetencyState, res Result, now time.Time) CompetencyState
 ```
 
-`ApplyResult` order of operations: update each observed item's `Score`, `Samples`, `LastPracticed`; then evaluate the key-unlock condition (unlock at most one key per call); then evaluate the ngram-tier condition. Unlocking after scoring means a lesson's own result can trigger the unlock it earned.
+`ApplyResult` order of operations: update each observed item's `Score`, `Samples`, `LastPracticed`; then evaluate the key-unlock condition (unlock at most one key per call); then evaluate the ngram-tier condition; then evaluate the target-WPM raise (at most one step per call). Unlocking after scoring means a lesson's own result can trigger the unlock it earned.
 
 ### The Corpus dependency
 
@@ -232,6 +246,9 @@ Keep these in one block so they are easy to find, tune, and explain.
 | `MIN_SAMPLES`            | 50      | confidence gate before any unlock             |
 | `PHASE_THRESHOLD`        | 0.75    | mean key score to enter ngram-focus phase     |
 | `STARTING_KEYS`          | 4       | size of the initial unlocked set              |
+| `STARTING_TARGET_WPM`    | 40      | initial target speed; held until the alphabet unlocks |
+| `TARGET_RAISE_SCORE`     | 0.85    | mean key decayed score needed to raise the target |
+| `TARGET_WPM_STEP`        | 5       | WPM added per target raise                     |
 | `LAMBDA_KEY`             | 3.0     | weak-key boost in generation                  |
 | `LAMBDA_NGRAM`           | 0.5→3.0 | weak-ngram boost; phase-scaled                |
 | `LESSON_WORDS`           | 10-15   | words per generated lesson                    |

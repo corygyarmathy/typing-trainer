@@ -65,7 +65,7 @@ A typical authenticated request (`GET /api/v1/lessons/next`) flows through:
 3. Auth middleware validates the JWT and injects the user ID into the context
 4. The progress handler parses the request and calls `progress.Service.NextLesson(ctx, userID)`
 5. The service loads the user's competency state from `progress.Repository`
-6. The service calls `adaptive.Engine.NextLesson(state, corpus)` - pure
+6. The service calls `adaptive.NextLesson(state, corpus, now, rand)` - pure
 7. The service returns the result up through the handler, which JSON-encodes it
 
 ## Write flow
@@ -73,7 +73,7 @@ A typical authenticated request (`GET /api/v1/lessons/next`) flows through:
 `POST /api/v1/sessions` is the one request that writes across bounded contexts: it records a session _and_ folds the result into competency. The `session` service owns this unit of work, composing the `progress` repository and the pure engine inside a single transaction:
 
 1. begin a transaction
-2. load the user's `CompetencyState` via the `progress` repository (transaction-scoped)
+2. load the user's `CompetencyState` via the `progress` repository, selecting the `user_progress` row `FOR UPDATE` (transaction-scoped). The state is a whole-document load-modify-write, so two overlapping submissions for the same user could otherwise lose an update; the row lock serialises them. Contention is per-user (one person typing), so the lock is effectively never contended.
 3. `adaptive.ApplyResult(state, result, now)` - pure; folds the observations in and applies any unlock or tier advance
 4. derive the session's WPM and accuracy from the submitted duration and observations - pure; the server does not trust client-computed aggregates
 5. insert the `sessions` row via the `session` repository (same transaction)
@@ -92,5 +92,6 @@ These are deliberate non-goals, not omissions; each the possibility of being rev
 - Kubernetes (Docker on a single homelab host is fine)
 - GraphQL (REST is the right fit for a TUI consumer)
 - OAuth (JWT registration is enough for v1)
+- Refresh tokens (v1 issues a single moderate-lived access token - ADR 0015's documented fallback; rotating refresh and the `/auth/refresh` endpoint are deferred and omitted from the API contract until they ship)
 - Password reset / email verification (no email infrastructure in v1; revisit when there are real users to lock out of accounts)
 - Rate limiting on `/auth/*` (deferred until the public SSH surface ships; the SSH layer has its own per-IP limits in [ADR 0008](adr/0008-ssh-public-key-authentication.md))

@@ -1,6 +1,11 @@
-# sqlc generates type-safe Go from SQL. Each domain package owns its own
-# queries file under internal/<package>/queries.sql, with generated code
-# emitted into internal/<package>/db/.
+# sqlc generates type-safe Go from SQL. Each bounded context owns its own
+# queries file under internal/<context>/queries.sql and gets its OWN generated
+# package under internal/<context>/db/. Per-context generation (rather than one
+# shared internal/db package) keeps the bounded-context boundary real: a
+# context cannot reach into another context's generated persistence.
+#
+# corpus is intentionally absent: it is read-only data embedded in the binary,
+# not a database-backed context (ADR 0013).
 #
 # See https://docs.sqlc.dev/en/stable/reference/config.html
 
@@ -8,16 +13,36 @@ version: "2"
 sql:
   - engine: postgresql
     schema: migrations/
-    queries:
-      - internal/auth/queries.sql
-      - internal/progress/queries.sql
-      - internal/session/queries.sql
-      - internal/corpus/queries.sql
+    queries: internal/auth/queries.sql
     gen:
       go:
         package: db
+        out: internal/auth/db
         sql_package: pgx/v5
-        out: internal/db
+        emit_interface: true
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_pointers_for_null_types: true
+  - engine: postgresql
+    schema: migrations/
+    queries: internal/progress/queries.sql
+    gen:
+      go:
+        package: db
+        out: internal/progress/db
+        sql_package: pgx/v5
+        emit_interface: true
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_pointers_for_null_types: true
+  - engine: postgresql
+    schema: migrations/
+    queries: internal/session/queries.sql
+    gen:
+      go:
+        package: db
+        out: internal/session/db
+        sql_package: pgx/v5
         emit_interface: true
         emit_json_tags: false
         emit_prepared_queries: false
