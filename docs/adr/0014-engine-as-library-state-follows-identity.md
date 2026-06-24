@@ -9,7 +9,7 @@
 
 ## Context
 
-The product requirement is that the trainer is usable the instant it launches or is connected to - no sign-in wall. An unidentified user gets an ephemeral session and a note explaining that signing in (or connecting with an SSH key) will persist their progress. This is the typing-trainer equivalent of a web app that works anonymously and offers an account to save state.
+The product requirement is that the trainer is usable the instant it launches or is connected to - no sign-in wall. An unidentified user gets an ephemeral session and a note explaining that signing in (or connecting with an SSH key) will persist their progress. This is the typist equivalent of a web app that works anonymously and offers an account to save state.
 
 [ADR 0010](/docs/adr/0010-unified-identity-and-jwt.md) fully address how this requirement would be achieved. An anonymous user has no `user_progress` row to load or save. And the REST API is stateless, so "anonymous, in-memory" state cannot survive between two requests unless it lives somewhere: a server-side ephemeral store, or the client. The browser equivalent (a cookie / `localStorage`) has a natural analogue for a TUI - a local state file.
 
@@ -20,7 +20,7 @@ Adopt one rule: **`internal/adaptive` is a pure library; the API is that library
 | Surface                   | Identity         | State lives                                          | Engine runs           |
 | ------------------------- | ---------------- | ---------------------------------------------------- | --------------------- |
 | Standalone TUI, signed in | password -> JWT  | Postgres, via the API                                | server                |
-| Standalone TUI, anonymous | none             | local state file (`$XDG_STATE_HOME/typing-trainer/`) | client, in-process    |
+| Standalone TUI, anonymous | none             | local state file (`$XDG_STATE_HOME/typist/`) | client, in-process    |
 | SSH TUI, public key       | `ssh_key` -> JWT | Postgres, via the API                                | server                |
 | SSH TUI, no key           | anonymous        | in-memory, discarded on disconnect                   | sshd host, in-process |
 

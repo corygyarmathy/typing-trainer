@@ -3,7 +3,7 @@ openapi: "3.0.3"
 #       Consider whether using the older OpenAPI spec matters or not.
 
 info:
-  title: Typing Trainer API
+  title: Typist API
   version: "1.0.0"
   description: |
     Backend for the adaptive typing trainer. The client requests the next

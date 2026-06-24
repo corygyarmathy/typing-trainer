@@ -6,7 +6,7 @@
 
 ```
 ┌──────────────┐         HTTP / JSON         ┌────────────────────────┐
-│  TUI client  │ ──────────────────────────► │  typing-trainer server │
+│  TUI client  │ ──────────────────────────► │      typist server     │
 │ (Bubble Tea) │                             │      (Go monolith)     │
 └──────────────┘                             └──────────┬─────────────┘
                                                         │

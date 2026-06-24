@@ -1,4 +1,4 @@
-// Command server is the entry point for the typing-trainer backend.
+// Command server is the entry point for the typist backend.
 //
 // Responsibilities:
 //   - Load configuration from environment
@@ -20,8 +20,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/corygyarmathy/typing-trainer/internal/platform/config"
-	"github.com/corygyarmathy/typing-trainer/internal/platform/logging"
+	"github.com/corygyarmathy/typist/internal/platform/config"
+	"github.com/corygyarmathy/typist/internal/platform/logging"
 )
 
 func main() {

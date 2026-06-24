@@ -1,4 +1,4 @@
-module github.com/corygyarmathy/typing-trainer
+module github.com/corygyarmathy/typist
 
 go 1.26.3
 

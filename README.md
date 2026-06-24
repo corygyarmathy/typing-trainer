@@ -1,4 +1,4 @@
-# typing-trainer
+# typist
 
 An adaptive typing trainer with a Go backend and TUI client. The trainer
 tracks per-key and per-ngram competency separately, generates lessons
@@ -17,8 +17,8 @@ ssh typist.gyarmathy.co
 ```
 
 ```bash
-git clone https://github.com/corygyarmathy/typing-trainer
-cd typing-trainer
+git clone https://github.com/corygyarmathy/typist
+cd typist
 docker compose -f deploy/docker/compose.yaml up
 ```
 

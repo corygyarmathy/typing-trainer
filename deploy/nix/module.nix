@@ -1,27 +1,27 @@
-# NixOS module for deploying typing-trainer to the homelab.
+# NixOS module for deploying typist to the homelab.
 #
 # Usage from your existing flake:
 #
-#   inputs.typing-trainer.url = "github:corygyarmathy/typing-trainer";
+#   inputs.typist.url = "github:corygyarmathy/typist";
 #
 #   modules = [
-#     typing-trainer.nixosModules.default
+#     typist.nixosModules.default
 #     {
-#       services.typing-trainer = {
+#       services.typist = {
 #         enable = true;
-#         databaseUrl = config.sops.secrets.typing-trainer.databaseURL.path;
-#         jwtSecretFile = config.sops.secrets.typing-trainer.jwt.path;
+#         databaseUrl = config.sops.secrets.typist.databaseURL.path;
+#         jwtSecretFile = config.sops.secrets.typist.jwt.path;
 #       };
 #     }
 #   ];
 #
-#   systemd.services.typing-trainer.serviceConfig = {
+#   systemd.services.typist.serviceConfig = {
 #   LoadCredential = [
 #     "jwt:${cfg.jwtSecretFile}"
 #     "dburl:${cfg.databaseUrlFile}"
 #   ];
 # };
-# systemd.services.typing-trainer.environment = {
+# systemd.services.typist.environment = {
 #   JWT_SECRET_FILE    = "%d/jwt";    # %d = $CREDENTIALS_DIRECTORY
 #   DATABASE_URL_FILE  = "%d/dburl";
 # };
@@ -38,15 +38,15 @@
 with lib;
 
 let
-  cfg = config.services.typing-trainer;
+  cfg = config.services.typist;
 in
 {
-  options.services.typing-trainer = {
-    enable = mkEnableOption "typing-trainer backend service";
+  options.services.typist = {
+    enable = mkEnableOption "typist backend service";
     # TODO: package, databaseUrl, listenAddress, jwtSecretFile, etc.
   };
 
   config = mkIf cfg.enable {
-    # TODO: systemd.services.typing-trainer = { ... };
+    # TODO: systemd.services.typist = { ... };
   };
 }

@@ -34,7 +34,7 @@ func Setup(level, env string) *slog.Logger {
 		h = slog.NewTextHandler(os.Stdout, opts)
 	}
 
-	logger := slog.New(h).With("service", "typing-trainer")
+	logger := slog.New(h).With("service", "typist")
 	slog.SetDefault(logger)
 	return logger
 }

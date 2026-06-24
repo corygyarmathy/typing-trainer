@@ -4,7 +4,7 @@
 #   builder  - compile static binary with CGO disabled
 #   runtime  - distroless, ~10-20MB final image
 #
-# Build with:   docker build -f deploy/docker/Dockerfile -t typing-trainer .
+# Build with:   docker build -f deploy/docker/Dockerfile -t typist .
 # (built from repo root so the build context contains go.mod and migrations)
 
 FROM golang:1.26-alpine AS builder

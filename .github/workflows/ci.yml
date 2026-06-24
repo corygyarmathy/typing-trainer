@@ -55,4 +55,4 @@ jobs:
       - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v4
       - name: Build Docker image
-        run: docker build -f deploy/docker/Dockerfile -t typing-trainer:${{ github.sha }} .
+        run: docker build -f deploy/docker/Dockerfile -t typist:${{ github.sha }} .

@@ -1,5 +1,5 @@
 {
-  description = "typing-trainer: adaptive typing trainer backend";
+  description = "typist: adaptive typing trainer backend";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -42,7 +42,7 @@
           shellHook = ''
             export DATABASE_URL="postgres://typing:typing@localhost:5432/typing?sslmode=disable"
             export GOFLAGS="-mod=readonly"
-            echo "typing-trainer dev shell"
+            echo "typist dev shell"
             echo "  go:        $(go version | cut -d' ' -f3)"
             echo "  goose:     $(goose --version 2>&1 | head -1)"
             echo "  sqlc:      $(sqlc version)"

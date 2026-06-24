@@ -17,7 +17,7 @@ Adopt the standard access / refresh split.
 - **Access token.** Short-lived JWT (15 minutes), sent as `Authorization: Bearer`. Stateless; verified on every request.
 - **Refresh token.** Long-lived (30 days), opaque, **rotating**. Exchanged for a new access token _and a new refresh token_ at a new `POST /api/v1/auth/refresh`. Rotation means each refresh invalidates the previous refresh token, so a leaked-and-replayed refresh token is detectable and bounded.
 - `POST /api/v1/auth/register` and `POST /api/v1/auth/login` return both tokens.
-- **Standalone TUI (password).** Stores the refresh token in its local state file (`$XDG_STATE_HOME/typing-trainer/`, per [ADR 0014](/docs/adr/0014-engine-as-library-state-follows-identity.md)) and silently refreshes on a `401`.
+- **Standalone TUI (password).** Stores the refresh token in its local state file (`$XDG_STATE_HOME/typist/`, per [ADR 0014](/docs/adr/0014-engine-as-library-state-follows-identity.md)) and silently refreshes on a `401`.
 - **SSH path.** Needs no refresh token. sshd holds the user's identity for the life of the connection ([ADR 0010](/docs/adr/0010-unified-identity-and-jwt.md)) and mints a fresh access token per connection; if one expires mid-session it re-mints. The access-token lifetime is set comfortably longer than a single lesson, so this is rare.
 
 ## Consequences
