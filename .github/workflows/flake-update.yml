@@ -1,0 +1,105 @@
+name: flake-update
+
+# Dedicated Nix flake updater (ADR 0017). Weekly (and on demand) it:
+#   1. builds the dev-shell closure at the current flake.lock,
+#   2. runs `nix flake update`,
+#   3. builds the closure again (this also validates the updated shell builds),
+#   4. computes `nix store diff-closures`, and
+#   5. opens/updates a single PR with the package delta written into the COMMIT
+#      MESSAGE BODY - so it is durable in `git log`, not just on the PR.
+#
+# An empty closure diff means the update only refreshed flake.lock metadata
+# (rev/narHash) without changing any package version; in that case no PR is
+# opened, since there is nothing to review or record in git history.
+#
+# Checkout + PR creation use FLAKE_UPDATE_TOKEN (a fine-grained PAT or GitHub
+# App token with contents:write + pull-requests:write) rather than the default
+# GITHUB_TOKEN, so the resulting PR triggers ci.yml like any normal PR. With the
+# default GITHUB_TOKEN, GitHub suppresses workflow events on the PR and CI would
+# not run; the in-workflow build (step 3) would then be the only validation.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.FLAKE_UPDATE_TOKEN }}
+          fetch-depth: 0
+
+      - uses: DeterminateSystems/nix-installer-action@v22
+
+      - name: Build the current (pre-update) dev-shell closure
+        run: nix develop --profile "$RUNNER_TEMP/before" -c true
+
+      - name: Update flake.lock
+        run: nix flake update
+
+      - name: Build the updated dev-shell closure (also validates it builds)
+        run: nix develop --profile "$RUNNER_TEMP/after" -c true
+
+      - name: Compute the closure delta
+        id: diff
+        run: |
+          set -euo pipefail
+
+          # diff-closures emits ANSI colour codes even when captured rather than
+          # written to a terminal; strip them so the message stays plain text.
+          raw="$(NO_COLOR=1 nix store diff-closures "$RUNNER_TEMP/before" "$RUNNER_TEMP/after" || true)"
+          diff="$(printf '%s' "$raw" | sed $'s/\x1b\\[[0-9;]*m//g')"
+
+          # An empty closure diff means `nix flake update` only refreshed
+          # flake.lock metadata (rev/narHash) - the dev-shell closure is
+          # identical, so no package actually changed version. There is nothing
+          # to review or record, so skip the PR (see ADR 0017).
+          if [ -z "$diff" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No package version changes; flake.lock metadata only. Skipping PR."
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo 'body<<DIFF_EOF'
+            printf '%s\n' "$diff"
+            echo 'DIFF_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open / update the flake bump PR
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.FLAKE_UPDATE_TOKEN }}
+          branch: deps/flake-lock
+          base: main
+          delete-branch: true
+          title: "build(nix): update flake.lock"
+          commit-message: |
+            build(nix): update flake.lock
+
+            Package changes (nix store diff-closures):
+
+            ${{ steps.diff.outputs.body }}
+          body: |
+            Automated `flake.lock` update.
+
+            The package delta below is recorded in the commit body so it lands
+            in `git log` on merge (see ADR 0017).
+
+            ### Package changes (`nix store diff-closures`)
+
+            ```
+            ${{ steps.diff.outputs.body }}
+            ```
+          labels: |
+            dependencies
+            nix

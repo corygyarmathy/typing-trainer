@@ -1,0 +1,44 @@
+version: 2
+
+# Dependabot owns the shipped + CI surfaces: Go modules, the Docker base image,
+# and pinned GitHub Actions. go.mod and the Docker base image are what actually
+# ship, so those get security updates too (enable "Dependabot security updates"
+# in repo settings).
+#
+# The Nix flake is handled separately by .github/workflows/flake-update.yml,
+# which records closure-level package deltas (go 1.26.3 -> 1.26.4, ...) directly
+# in the commit body. See ADR 0017.
+
+updates:
+  # Go modules - the dependencies that actually ship in the binary / image.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build(go)"
+    labels:
+      - "dependencies"
+      - "go"
+
+  # Docker base images (Dockerfile + compose.yaml live here).
+  - package-ecosystem: "docker"
+    directory: "/deploy/docker"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build(docker)"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # Pinned Action versions (the CI supply chain).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"

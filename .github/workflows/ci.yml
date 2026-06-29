@@ -48,9 +48,10 @@ jobs:
         run: go build ./...
 
   dev-shell:
-    # Validate the Nix dev shell so flake.lock / flake.nix changes (including
-    # the weekly bot bumps in flake-update.yml) are exercised through the Nix
-    # path. Grows naturally once `nix build` / the NixOS module lands (ADR-0006).
+    # Validate the Nix dev shell so flake.lock / flake.nix changes (including the
+    # weekly Dependabot bumps) are exercised through the Nix path. Dependabot PRs
+    # trigger this automatically, so it is the validation gate for those bumps.
+    # Grows naturally once `nix build` / the NixOS module lands (ADR-0006).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
