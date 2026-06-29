@@ -47,6 +47,18 @@ jobs:
       - name: build
         run: go build ./...
 
+  dev-shell:
+    # Validate the Nix dev shell so flake.lock / flake.nix changes (including
+    # the weekly bot bumps in flake-update.yml) are exercised through the Nix
+    # path. Grows naturally once `nix build` / the NixOS module lands (ADR-0006).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Build and lint inside the dev shell
+        run: |
+          nix develop -c bash -c 'set -e; go version; go vet ./...; go build ./...; golangci-lint run ./...'
+
   build-image:
     needs: lint-and-test
     runs-on: ubuntu-latest
