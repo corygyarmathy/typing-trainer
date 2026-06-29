@@ -24,7 +24,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -54,7 +54,7 @@ jobs:
     # Grows naturally once `nix build` / the NixOS module lands (ADR-0006).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: DeterminateSystems/nix-installer-action@v22
       - name: Build and lint inside the dev shell
         run: |
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - name: Build Docker image
         run: docker build -f deploy/docker/Dockerfile -t typist:${{ github.sha }} .
