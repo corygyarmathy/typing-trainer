@@ -1,6 +1,6 @@
 module github.com/corygyarmathy/typist
 
-go 1.26.3
+go 1.26.4
 
 // Dependencies will be added as each phase is implemented
 // Expected core set after phase 4:
