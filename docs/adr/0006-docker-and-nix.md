@@ -17,16 +17,20 @@ The configuration and secrets management aspects of this are addressed in: [`ADR
 
 Both, in parallel, with Docker as the documented quickstart:
 
-- **Docker** (`docker compose up`) is the path advertised in the README. Universal, zero-friction, very commonly already installed.
-- **Nix** (`nix develop`, eventually `nix build`) provides the reproducible dev shell, deterministic builds, and the NixOS module used to deploy to the homelab.
+- **Docker** (`docker compose up`) is the path advertised in the README. Universal, zero-friction, very commonly already installed. Its load-bearing job is standing up Postgres and the one-command quickstart, not packaging the binary for portability the binary does not need.
+- **Nix** (`nix develop`, eventually `nix build`) provides the reproducible dev shell, deterministic builds, and the NixOS module used to deploy to the homelab. This is the production substrate.
+
+Neither may become load-bearing for the application itself: the binary depends only on the environment-variable contract defined in [`internal/platform/config`](/internal/platform/config), so `go run ./cmd/server` against any reachable Postgres must work with no Docker and no Nix. Docker and Nix are packaging around that contract, not preconditions of it.
 
 The final Docker image and the binary produced by `nix build` should be functionally equivalent - same compiled Go binary, just packaged differently. A stretch goal is to have Nix build the Docker image itself via `dockerTools.buildImage`, giving truly reproducible image hashes.
+
+The usual argument for Docker, providing a consistent runtime, does not apply as the server compiles to a static binary with no runtime dependencies. The binary already runs anywhere. Compose earns its place on the **Postgres dependency**: `docker compose up` hands a reviewer a correctly-versioned, healthchecked, throwaway database with nothing installed locally.
 
 ## Consequences
 
 **Positive**
 
-- Reviewers can evaluate the project without learning & installing Nix.
+- Reviewers can evaluate the project without learning & installing Nix, and without installing or configuring Postgres.
 - Dev environment is locked across machines and CI via the flake.
 - Homelab deployment is declarative and version-controlled alongside the code.
 
@@ -34,6 +38,7 @@ The final Docker image and the binary produced by `nix build` should be function
 
 - Two build paths to maintain. Mitigated by them sharing the same Go source and the same `cmd/server/main.go` entrypoint.
 - The Nix flake adds a directory of files that won't be relevant to reviewers who don't use Nix. Mitigated by clear README signposting.
+- The clone-and-run promise depends on the schema existing after `docker compose up`. Because production runs the same binary, migrations are applied in-process at startup (advisory-locked) rather than via a separate Compose migration step; if that wiring regresses, the headline Docker justification regresses with it.
 
 ## Alternatives considered
 
