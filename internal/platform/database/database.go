@@ -9,16 +9,41 @@
 // so they remain testable with testcontainers.
 package database
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"time"
 
-// Open constructs a database pool from the given DSN.
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// Open constructs a database pool from the given connection string.
 //
 // TODO(phase-2):
 //   - Return *pgxpool.Pool
 //   - Set sane defaults: MaxConns, MinConns, HealthCheckPeriod
 //   - Verify connectivity via pool.Ping before returning
-func Open(ctx context.Context, dsn string) (any, error) {
-	return nil, nil
+func Open(ctx context.Context, connString string) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return &pgxpool.Pool{}, fmt.Errorf("failed to parse db connString config: %w", err)
+	}
+
+	cfg.MaxConns = 4
+	cfg.MinConns = 1
+	cfg.HealthCheckPeriod = 1 * time.Minute
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return &pgxpool.Pool{}, fmt.Errorf("failed to create pgxpool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return &pgxpool.Pool{}, fmt.Errorf("pinging database: %w", err)
+	}
+
+	return pgxpool.New(ctx, connString)
 }
 
 // Migrate applies all pending migrations from the embedded migrations dir.
@@ -27,6 +52,6 @@ func Open(ctx context.Context, dsn string) (any, error) {
 //   - Use //go:embed to bundle ../../../migrations/*.sql
 //   - Acquire a connection from the pool and pass to goose.Up
 //   - Take an advisory lock so concurrent boots don't race
-func Migrate(ctx context.Context, pool any) error {
+func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }

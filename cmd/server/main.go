@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/corygyarmathy/typist/internal/platform/config"
+	"github.com/corygyarmathy/typist/internal/platform/database"
 	"github.com/corygyarmathy/typist/internal/platform/logging"
 )
 
@@ -51,6 +52,15 @@ func run() error {
 	}
 
 	logging.Setup(cfg.LogLevel, cfg.Env)
+
+	dbPool, err := database.Open(
+		context.Background(),
+		cfg.DatabaseURL,
+	)
+	if err != nil {
+		return err
+	}
+	defer dbPool.Close()
 
 	srv := &http.Server{
 		Addr:              ":8080",
