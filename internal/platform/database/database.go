@@ -22,18 +22,20 @@ import (
 	"github.com/pressly/goose/v3/lock"
 )
 
-// Open constructs a database pool from the given connection string,
-// setting sane detfaults and verifying connectivity via pool.Ping
-// before returning.
+// Open constructs a database pool from the given connection string and
+// verifies connectivity before returning. The caller owns the pool and
+// must Close it on shutdown.
 func Open(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return &pgxpool.Pool{}, fmt.Errorf("failed to parse db connString config: %w", err)
 	}
 
-	cfg.MaxConns = 4
+	cfg.MaxConns = 10
 	cfg.MinConns = 1
-	cfg.HealthCheckPeriod = 1 * time.Minute
+	cfg.MaxConnLifetime = time.Hour
+	cfg.MaxConnIdleTime = 30 * time.Minute
+	cfg.HealthCheckPeriod = time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
