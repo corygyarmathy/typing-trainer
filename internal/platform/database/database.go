@@ -22,12 +22,9 @@ import (
 	"github.com/pressly/goose/v3/lock"
 )
 
-// Open constructs a database pool from the given connection string.
-//
-// TODO(phase-2):
-//   - Return *pgxpool.Pool
-//   - Set sane defaults: MaxConns, MinConns, HealthCheckPeriod
-//   - Verify connectivity via pool.Ping before returning
+// Open constructs a database pool from the given connection string,
+// setting sane detfaults and verifying connectivity via pool.Ping
+// before returning.
 func Open(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(connString)
 	if err != nil {
@@ -48,7 +45,7 @@ func Open(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 		return &pgxpool.Pool{}, fmt.Errorf("pinging database: %w", err)
 	}
 
-	return pgxpool.New(ctx, connString)
+	return pool, nil
 }
 
 // Migrate applies all pending migrations from the embedded migrations dir.
