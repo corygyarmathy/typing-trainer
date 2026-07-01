@@ -5,6 +5,8 @@
 
 ## Context
 
+This decision assumes the datastore chosen in [ADR 0018](0018-postgresql-as-datastore.md) (PostgreSQL); the tools below are selected for it.
+
 Go has several options for database access (raw `database/sql`, `pgx` directly, query builders like `squirrel`, full ORMs like `GORM`/`ent`) and several migration tools (`golang-migrate`, `goose`, `atlas`).
 
 ## Decision
