@@ -20,7 +20,7 @@ erDiagram
     auth_credentials {
         uuid id PK
         uuid user_id FK
-        text kind "password | ssh_key"
+        text cred_kind "password | ssh_key"
         text identifier "email (lowercased) | key fingerprint"
         text secret "argon2id hash | null for ssh_key"
         timestamptz created_at
@@ -77,7 +77,7 @@ The `competency` document shape (this is exactly the engine's `CompetencyState`)
 
 ## Notes on the relational tables
 
-**`auth_credentials`.** The unique constraint `(kind, identifier)` is both the integrity rule and the lookup index - login and SSH-key resolution both query by it. Emails are normalised to lowercase in the application before insert and lookup (simpler than a `citext` column when the column is polymorphic across credential kinds). `secret` is null for `ssh_key` rows.
+**`auth_credentials`.** The unique constraint `(cred_kind, identifier)` is both the integrity rule and the lookup index - login and SSH-key resolution both query by it. Emails are normalised to lowercase in the application before insert and lookup (simpler than a `citext` column when the column is polymorphic across credential kinds). `secret` is null for `ssh_key` rows.
 
 **`sessions`.** The append-only time series of completed lessons, distinct from `user_progress.competency`: competency is a current-snapshot rolling aggregate (whole-document load-modify-write), while `sessions` is the queryable per-attempt history the WPM-over-time chart and history view read - the JSONB doc cannot serve those because the engine folds each lesson's `Observation` data into competency and then discards it. We store only the derived summary (`wpm`, `accuracy`, `completed_at`), never the lesson text: lessons are generated pseudo-words, so a "what did I type" replay is low value, and if replay or audit is ever wanted the right move is a nullable `jsonb` column for the raw observations (or the generator seed + resolved targets + corpus version, since regeneration depends on the competency state at generation time) rather than a text column now. Index `(user_id, completed_at DESC)` for history and progress-chart queries. History is paginated with a **keyset (seek) cursor**, not `OFFSET`: the opaque `cursor` in the API encodes the last row's `(completed_at, id)`, and the next page is `WHERE (completed_at, id) < (:completed_at, :id) ORDER BY completed_at DESC, id DESC LIMIT :n`. This rides the index above, stays correct when new sessions are inserted between page fetches, and does not degrade as the offset grows.
 

@@ -18,8 +18,8 @@ Left unreconciled, that is two identity systems. I need a single identity model 
 
 **Decouple identity from credentials.** One `users` table holds identity. A separate `auth_credentials` table holds zero or more credentials per user:
 
-- `kind = 'password'` - `identifier` is the (lowercase-normalised) email, `secret` is the argon2id hash.
-- `kind = 'ssh_key'` - `identifier` is the public key fingerprint, `secret` is null.
+- `cred_kind = 'password'` - `identifier` is the (lowercase-normalised) email, `secret` is the argon2id hash.
+- `cred_kind = 'ssh_key'` - `identifier` is the public key fingerprint, `secret` is null.
 
 A password registration creates a user plus a `password` credential. An incoming SSH connection looks up the offered key's fingerprint; if found, that is the user; if not, a user plus an `ssh_key` credential is auto-created (low-friction registration, per [ADR 0008](/docs/adr/0008-ssh-public-key-authentication.md). The same user can hold both kinds later without a schema change.
 

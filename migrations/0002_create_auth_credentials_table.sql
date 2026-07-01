@@ -5,23 +5,23 @@
 -- 'ssh_key' kind lands with the SSH surface without a schema change.
 CREATE TABLE auth_credentials (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
-    kind          TEXT NOT NULL CHECK (kind IN ('password', 'ssh_key')),
+    user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cred_kind     TEXT NOT NULL CHECK (cred_kind IN ('password', 'ssh_key')),
     -- For 'password': the lowercase-normalised email. For 'ssh_key': the key
     -- fingerprint. Application normalises before insert and lookup.
     identifier    TEXT NOT NULL,
     -- argon2id hash for 'password'; null for 'ssh_key'.
     secret        TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     -- Both the integrity rule and the login / key-resolution lookup index.
-    UNIQUE (kind, identifier)
+    UNIQUE (cred_kind, identifier),
 
     -- Enforce expected secret behaviour
     CHECK (
-      (kind = 'ssh_key' AND secret IS NULL)
+      (cred_kind = 'ssh_key' AND secret IS NULL)
       OR
-      (kind = 'password' AND secret IS NOT NULL)
+      (cred_kind = 'password' AND secret IS NOT NULL)
     )
 );
 
