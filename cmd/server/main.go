@@ -61,6 +61,13 @@ func run() error {
 		return err
 	}
 	defer dbPool.Close()
+	slog.Info("database pool opened")
+
+	err = database.Migrate(ctx, dbPool)
+	if err != nil {
+		return err
+	}
+	slog.Info("database migrations applied")
 
 	srv := &http.Server{
 		Addr:              ":8080",

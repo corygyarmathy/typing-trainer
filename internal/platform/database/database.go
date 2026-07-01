@@ -12,9 +12,14 @@ package database
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/corygyarmathy/typist/migrations"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 )
 
 // Open constructs a database pool from the given connection string.
@@ -47,11 +52,35 @@ func Open(ctx context.Context, connString string) (*pgxpool.Pool, error) {
 }
 
 // Migrate applies all pending migrations from the embedded migrations dir.
-//
-// TODO(phase-2):
-//   - Use //go:embed to bundle ../../../migrations/*.sql
-//   - Acquire a connection from the pool and pass to goose.Up
-//   - Take an advisory lock so concurrent boots don't race
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
+	// goose speaks database/sql; adapt the pgx pool rather than opening a
+	// second connection path with its own credentials.
+	db := stdlib.OpenDBFromPool(pool)
+	defer func() {
+		if cerr := db.Close(); cerr != nil {
+			slog.Error("error closing database:", "cerr", cerr)
+		}
+	}()
+
+	// prevents multiple instances from running simultaneous migrations
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return fmt.Errorf("creating migration locker: %w", err)
+	}
+
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		db,
+		migrations.SQLMigrationsFS, // uses embedded migrations dir
+		goose.WithSessionLocker(locker),
+	)
+	if err != nil {
+		return fmt.Errorf("creating migration provider: %w", err)
+	}
+
+	if _, err := provider.Up(ctx); err != nil {
+		return fmt.Errorf("applying migrations: %w", err)
+	}
+
 	return nil
 }
