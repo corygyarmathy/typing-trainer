@@ -22,6 +22,7 @@ Go has several options for database access (raw `database/sql`, `pgx` directly, 
 - `goose` migrations are plain SQL with a tiny annotation header. Familiar for anyone who's done schema migrations before.
 - Advisory locking prevents race conditions when multiple instances boot against the same database.
 - Already familiar with these tools and SQL, don't need to learn something new and confident they will be sufficient for the use case.
+- Queries use `pgx`'s native interface (via `sqlc`'s `pgx/v5` target) rather than `database/sql`, trading unneeded cross-database portability for Postgres-native types and pooling. `database/sql` compatibility is retained only where a dependency requires it (`goose` migrations, via `stdlib.OpenDBFromPool`).
 
 **Negative**
 
