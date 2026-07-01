@@ -12,7 +12,7 @@ Go has several options for database access (raw `database/sql`, `pgx` directly, 
 ## Decision
 
 - **`sqlc`** for type-safe Go code generated from raw SQL queries.
-- **`goose`** for migrations (numbered `.sql` files, applied via library at startup with an advisory lock).
+- **`goose`** for migrations (numbered `.sql` files - datetime prefixes are unnecessary here - applied via library at startup with an advisory lock).
 - **`pgx/v5`** as the underlying driver.
 
 ## Consequences
