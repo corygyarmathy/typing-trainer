@@ -1,6 +1,6 @@
 # ADR 0020: UUID identifiers for entities and requests
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-02
 - **Related Artefacts:**
   - Constrains: `migrations/*.sql`, `internal/api/middleware.go`
