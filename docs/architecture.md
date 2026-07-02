@@ -60,7 +60,7 @@ Dependencies point downward. Services do not depend on handlers; repositories do
 
 A typical authenticated request (`GET /api/v1/lessons/next`) flows through:
 
-1. chi router dispatches to the registered handler
+1. mux dispatches to the registered handler
 2. Recovery / RequestID / Logging middleware wrap the handler
 3. Auth middleware validates the JWT and injects the user ID into the context
 4. The progress handler parses the request and calls `progress.Service.NextLesson(ctx, userID)`

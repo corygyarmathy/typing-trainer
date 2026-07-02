@@ -20,7 +20,7 @@ The slice is **password auth + bigrams + Docker-local**. Deliberately deferred (
 
 ## Guiding principle
 
-Stay **vertical** at every step. Get a thin request flowing through `chi → service → sqlc → Postgres → TUI` before deepening any one layer. This front-loads integration risk — auth and the cross-context transactional write, where bugs actually hide — instead of building a polished engine in isolation and discovering the wiring late.
+Stay **vertical** at every step. Get a thin request flowing through `mux → service → sqlc → Postgres → TUI` before deepening any one layer. This front-loads integration risk — auth and the cross-context transactional write, where bugs actually hide — instead of building a polished engine in isolation and discovering the wiring late.
 
 ## Phases
 
@@ -28,7 +28,7 @@ Phase numbers align with the `phase-N` markers already in the code TODOs.
 
 ### Phase 1 — Platform spine & walking skeleton
 
-Config loader (`Secret` type, `_FILE` support, production guard), structured logging, pgx pool, goose-at-startup under an advisory lock, chi router with Recovery / RequestID / Logging middleware, `/healthz` + `/readyz`, the RFC 7807 error helper. `users` migration only.
+Config loader (`Secret` type, `_FILE` support, production guard), structured logging, pgx pool, goose-at-startup under an advisory lock, mux with Recovery / RequestID / Logging middleware, `/healthz` + `/readyz`, the RFC 7807 error helper. `users` migration only.
 
 **Done when:** `docker compose up` brings up app + Postgres, migrations apply, `/readyz` returns 200 (proves the DB path) and `/healthz` returns 200.
 

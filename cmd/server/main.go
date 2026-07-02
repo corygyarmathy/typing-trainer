@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/corygyarmathy/typist/internal/api"
 	"github.com/corygyarmathy/typist/internal/platform/config"
 	"github.com/corygyarmathy/typist/internal/platform/database"
 	"github.com/corygyarmathy/typist/internal/platform/logging"
@@ -33,11 +34,10 @@ func main() {
 }
 
 func run() error {
-	// TODO(phase-2): open pgx pool and run goose migrations
 	// TODO(phase-3): construct adaptive engine
-	// TODO(phase-4): construct repositories, services, handlers; build chi router
+	// TODO(phase-4): construct repositories, services, handlers
 	// TODO(phase-5): wire auth middleware
-	// TODO(phase-6): expose /metrics, /healthz, /readyz
+	// TODO(phase-6): expose /metrics
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
@@ -71,10 +71,9 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           http.NotFoundHandler(), // TODO: replace with router
+		Handler:           api.Router(dbPool.Ping),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-
 	errCh := make(chan error, 1)
 	go func() {
 		slog.Info("server listening", "addr", srv.Addr)
