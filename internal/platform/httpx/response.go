@@ -1,4 +1,9 @@
-package api
+// Package httpx holds the shared HTTP kit used across every bounded context:
+// JSON and RFC 7807 problem+json response writers, request-scoped context
+// helpers, and the cross-cutting middleware. It imports no domain package, so
+// domains can depend on it without forming an import cycle; route composition
+// lives above it in cmd/server.
+package httpx
 
 import (
 	"encoding/json"
@@ -6,10 +11,14 @@ import (
 	"net/http"
 )
 
-// Error responses follow RFC 7807 (application/problem+json). A single
-// envelope keeps error shapes consistent across every handler, and the
-// mapping from domain errors to HTTP status codes lives in WriteError alone,
-// so handlers stay thin and never hand-roll an error body.
+// Error responses follow RFC 7807 (application/problem+json). Routing every
+// handler error through WriteProblem keeps error bodies consistent and stops
+// handlers hand-rolling their own JSON. The caller passes the HTTP status and
+// a safe, human-readable detail explicitly; there is no domain-error-to-status
+// mapping yet (that arrives with the service layer in Phase 4).
+//
+// Note: 404 and 405 are emitted by http.ServeMux before any handler runs, so
+// they bypass this writer and carry the stdlib's text/plain body. See ADR 0019.
 //
 // Refer: https://datatracker.ietf.org/doc/html/rfc7807
 
