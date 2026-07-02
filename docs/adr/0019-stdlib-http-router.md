@@ -1,6 +1,6 @@
 # ADR 0019: Use the standard library HTTP router
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-02
 - **Related Artefacts:**
   - Implements:` internal/api/router.go`
