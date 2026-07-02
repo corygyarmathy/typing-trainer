@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/corygyarmathy/typist/internal/api"
 	"github.com/corygyarmathy/typist/internal/platform/config"
 	"github.com/corygyarmathy/typist/internal/platform/database"
 	"github.com/corygyarmathy/typist/internal/platform/logging"
@@ -71,7 +70,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":8080",
-		Handler:           api.Router(dbPool.Ping),
+		Handler:           Router(dbPool.Ping),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	errCh := make(chan error, 1)
