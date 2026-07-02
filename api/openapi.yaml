@@ -42,11 +42,16 @@ servers:
 # Generate server interfaces with oapi-codegen and implement them in
 # each domain package's handler.go.
 
+# NOTE: on error media types: 404 (unknown path) and 405 (wrong method) are
+# emitted by Go's http.ServeMux before any handler runs, so they carry the
+# stdlib's text/plain body, NOT application/problem+json. They are therefore
+# not modelled as problem+json responses below. See ADR 0019.
 paths:
-  /health:
+  /healthz:
     get:
       summary: Liveness check
-      operationId: getHealth
+      description: Always 200 while the process is serving; does not touch the database.
+      operationId: getHealthz
       responses:
         "200":
           description: Service is alive
@@ -54,6 +59,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      summary: Readiness check
+      description: >
+        Returns 200 when the database is reachable within 2s, otherwise 503.
+        Used by orchestration to gate traffic until dependencies are healthy.
+      operationId: getReadyz
+      responses:
+        "200":
+          description: Service is ready (database reachable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: Service not ready (database unreachable)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
 
 components:
   schemas:
@@ -64,11 +89,29 @@ components:
         status:
           type: string
           enum: [ok]
-    Error:
+    Problem:
       type: object
-      required: [code, message]
+      description: >
+        RFC 7807 problem detail, served as application/problem+json. Mirrors
+        internal/platform/httpx.Problem. Additional extension members may be
+        added later without breaking clients.
+      required: [type, title, status]
       properties:
-        code:
+        type:
           type: string
-        message:
+          format: uri-reference
+          default: "about:blank"
+          description: URI identifying the problem type; "about:blank" means "see status".
+        title:
           type: string
+          description: Short, human-readable summary, stable for a given type.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code, duplicated in the body per the RFC.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+        instance:
+          type: string
+          description: Identifies this occurrence; set to the request ID.
